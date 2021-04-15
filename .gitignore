@@ -1,0 +1,9 @@
+.metadata
+*.o
+*.bin
+*.elf
+*.map
+*.list
+
+.settings
+Debug
