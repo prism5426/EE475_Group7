@@ -10,14 +10,10 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include "hcsr04_sensor.h"
-
-#define trigPin 1
-#define echoPin 0
+#include "HCSR04.h"
 
 typedef struct ultrasonicData {
-	float* distance;
-	hcsr04_data_t* HCSR04_data;
+	double* distancesInCm[4];
 } ultrasonicData;
 
 void ultrasonicTask(void*);
