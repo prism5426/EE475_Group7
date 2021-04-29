@@ -178,6 +178,7 @@ int main(void)
 			printf("distance%d = %f\n", i, *(usData.distancesInCm[i]));
 		}
 		printf("\n");
+		printf("Eli was here\n");
 	}
     /* USER CODE END WHILE */
 
