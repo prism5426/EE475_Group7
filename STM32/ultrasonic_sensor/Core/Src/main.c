@@ -26,27 +26,18 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-#include "TaskControlBlock.h"
-#include "Ultrasonic.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-TCB ultrasonicTCB;
-
-TCB* head = NULL;
-TCB* tail = NULL;
-TCB* taskPtr = NULL;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DEBUG_US 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -68,59 +59,6 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int _write(int file, char *ptr, int len)
- {
-	 int DataIdx;
-	 for (DataIdx = 0; DataIdx < len; DataIdx++)
-	 {
-		 ITM_SendChar(*ptr++);
-	 }
-	 return len;
- }
-
-
-void insertTask(TCB* node) {
-    node -> next = NULL; // reset to NULL b/c we didnt reset when deleting
-    node -> prev = NULL;
-    if (NULL == head) { // If the head pointer is pointing to nothing
-        head = node; // set the head and tail pointers to point to this node
-        tail = node;
-    } else { // otherwise, head is not NULL, add the node to the end of the list
-        tail -> next = node;
-        node -> prev = tail; // note that the tail pointer is still pointing
-        // to the prior last node at this point
-        tail = node; // update the tail pointer
-        tail -> next = NULL;
-    }
-    return;
-}
-
-void deleteTask(TCB* node){
-    if (NULL != head) {
-        if (head == tail) {
-            head = NULL;
-            tail = NULL;
-        } else if (head == node) {
-            head = head -> next;
-            head -> prev = NULL;
-        } else if (tail == node) {
-            tail = tail -> prev;
-            tail -> next = NULL;
-        } else {
-            (node -> next) -> prev = node -> prev;
-            (node -> prev) -> next = node -> next;
-        }
-    }
-    return;
-}
-
-void scheduler() {
-    while (taskPtr) {
-        taskPtr->task(taskPtr->taskDataPtr);
-        taskPtr = taskPtr->next;
-    }
-    taskPtr = head;
-}
 
 /* USER CODE END 0 */
 
@@ -140,23 +78,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
-
-  // sensor data
-  ultrasonicData usData;
-  double distance0, distance1, distance2, distance3;
-  usData = (ultrasonicData){{&distance0, &distance1, &distance2, &distance3}};
-  ultrasonicTCB.task = &ultrasonicTask;
-  ultrasonicTCB.taskDataPtr = &usData;
-  ultrasonicTCB.next = NULL;
-  ultrasonicTCB.prev = NULL;
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  insertTask(&ultrasonicTCB);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -169,22 +96,14 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-	scheduler();
-	HAL_Delay(200);
-	if (DEBUG_US) {
-		for (int i = 0; i < 4; i++) {
-			printf("distance%d = %f\n", i, *(usData.distancesInCm[i]));
-		}
-		printf("\n");
-		printf("Eli was here\n");
-	}
-    /* USER CODE END WHILE */
+  while (1) {
+      /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+	  /* USER CODE BEGIN 3 */
+	  HAL_Delay(500);
+	  printf("Hello\r\n");
   }
-  /* USER CODE END 3 */
+/* USER CODE END 3 */
 }
 
 /**
@@ -284,7 +203,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 168-1;
+  htim2.Init.Prescaler = 168;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 4294967295;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
