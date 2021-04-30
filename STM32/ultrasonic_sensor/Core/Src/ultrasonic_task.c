@@ -8,7 +8,31 @@
 #define FRACTIONAL_US 4
 #define APB1_TIMER_FREQUENCY 84000000 // 84 MHz
 
+/* @brief Initializes the hardware timer (TIM2) that is used to generate trigger signals.
+ */
+static void ultrasonic_driver_init_trigger_timer();
+
+/* @brief Initializes the hardware timer (TIM3) that is used to measure echo responses.
+ */
+static void ultrasonic_driver_init_echo_timer();
+
+/* @brief Triggers an ultrasonic channel.
+ * @param channel Which channel to trigger. Ranges between [0, 3] inclusive.
+ */
+static void ultrasonic_driver_trigger_channel(int channel);
+
 void ultrasonic_task_init() {
+	ultrasonic_driver_init_trigger_timer();
+}
+
+void ultrasonic_task_run() {
+	for(int i = 0; i < 4; i++) {
+		ultrasonic_driver_trigger_channel(i);
+		HAL_Delay(1);
+	}
+}
+
+static void ultrasonic_driver_init_trigger_timer() {
 	// This is based on ST's "General-purpose Timer Cookbook" (AN4776) section 3.
 	// https://www.st.com/resource/en/application_note/dm00236305-generalpurpose-timer-cookbook-for-stm32-microcontrollers-stmicroelectronics.pdf
 
@@ -83,7 +107,7 @@ void ultrasonic_task_init() {
 	TIM2->CR1  |= TIM_CR1_CEN;   // Start the counter
 }
 
-static void trigger_channel(int channel) {
+static void ultrasonic_driver_trigger_channel(int channel) {
 	// Disable channels that are not being triggered.
 	TIM2->CCER &= (uint16_t) ~(TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E);
 
@@ -107,11 +131,4 @@ static void trigger_channel(int channel) {
 
 	// Start the timer.
 	TIM2->CR1 |= TIM_CR1_CEN;
-}
-
-void ultrasonic_task_run() {
-	for(int i = 0; i < 4; i++) {
-		trigger_channel(i);
-		HAL_Delay(1);
-	}
 }
