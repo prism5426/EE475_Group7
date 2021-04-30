@@ -58,7 +58,9 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+int __io_putchar(int ch) {
+	ITM_SendChar(ch);
+}
 /* USER CODE END 0 */
 
 /**
