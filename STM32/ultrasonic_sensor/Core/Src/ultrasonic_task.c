@@ -83,9 +83,13 @@ void ultrasonic_task_init() {
 	// Enable clocks for our timers.
 	__HAL_RCC_TIM1_CLK_ENABLE();
 	__HAL_RCC_TIM3_CLK_ENABLE();
+	__HAL_RCC_TIM5_CLK_ENABLE();
+	__HAL_RCC_TIM8_CLK_ENABLE();
 
 	ultrasonic_driver_init_trigger_timer(TIM3, APB1_TIMER_FREQUENCY); // TIM3 is clocked by APB1
 	ultrasonic_driver_init_echo_timer   (TIM1, APB2_TIMER_FREQUENCY, TIM_TS_ITR2); // TIM1 is clocked by APB2, and ITR2 is TIM3_TRGO
+	ultrasonic_driver_init_trigger_timer(TIM5, APB1_TIMER_FREQUENCY); // TIM5 is clocked by APB1
+	ultrasonic_driver_init_echo_timer   (TIM8, APB2_TIMER_FREQUENCY, TIM_TS_ITR3); // TIM8 is clocked by APB2, and ITR3 is TIM5_TRGO
 
 	// Enable interrupts for TIM1
 	HAL_NVIC_SetPriority(TIM1_CC_IRQn, 0, 0);
@@ -93,11 +97,11 @@ void ultrasonic_task_init() {
 	HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
 
-	// TODO: Enable interrupts for TIM8
-	//HAL_NVIC_SetPriority(TIM8_CC_IRQn, 0, 0);
-	//HAL_NVIC_EnableIRQ(TIM8_CC_IRQn);
-	//HAL_NVIC_SetPriority(TIM8_UP_TIM13_IRQn, 0, 0);
-	//HAL_NVIC_EnableIRQ(TIM8_UP_TIM13_IRQn);
+	// Enable interrupts for TIM8
+	HAL_NVIC_SetPriority(TIM8_CC_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(TIM8_CC_IRQn);
+	HAL_NVIC_SetPriority(TIM8_UP_TIM13_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(TIM8_UP_TIM13_IRQn);
 }
 
 void ultrasonic_task_run() {
