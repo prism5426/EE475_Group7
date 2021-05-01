@@ -281,6 +281,9 @@ static void ultrasonic_driver_init_echo_timer(TIM_TypeDef *tim, int timer_freque
 	tim->CCMR2 &= (uint16_t) ~TIM_CCMR2_CC4S; // Clear selection
 	tim->CCMR2 |= TIM_ICSELECTION_DIRECTTI << 8; // Channel triggers off its own input, not its paired channel's input
 
+	// Clear pending interrupts
+	tim->SR = RESET;
+
 	// Enable interrupts on all channels
 	tim->DIER |= TIM_DIER_CC1IE | TIM_DIER_CC2IE | TIM_DIER_CC3IE | TIM_DIER_CC4IE;
 
