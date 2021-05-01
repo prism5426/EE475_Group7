@@ -53,12 +53,6 @@ static void ultrasonic_driver_init_trigger_timer() {
 	// Set auto-reload to expire the timer at 10us and reset it back to zero, deactivating the pulse channel.
 	TIM2->ARR = 10 * FRACTIONAL_US;
 
-	// Program each channel to enable when timer is nonzero.
-	TIM2->CCR1 = 1;
-	TIM2->CCR2 = 1;
-	TIM2->CCR3 = 1;
-	TIM2->CCR4 = 1;
-
 	// Program prescaler.
 	TIM2->PSC = prescaler;
 
@@ -93,6 +87,12 @@ static void ultrasonic_driver_init_trigger_timer() {
 	TIM2->CCMR2 &= (uint16_t) ~TIM_CCMR2_CC4S; // Clear capture/compare selection (0 is output)
 	TIM2->CCMR2 |= TIM_OCMODE_PWM2 << 8; // 8-bit offset for channel 4
 
+	// Program each channel to never activate so they all stay low.
+	TIM2->CCR1 = 0xffffffff;
+	TIM2->CCR2 = 0xffffffff;
+	TIM2->CCR3 = 0xffffffff;
+	TIM2->CCR4 = 0xffffffff;
+
 	// Set channel outputs to active high
 	TIM2->CCER &= (uint16_t) ~TIM_CCER_CC1P;
 	TIM2->CCER |= TIM_OCPOLARITY_HIGH;
@@ -103,26 +103,29 @@ static void ultrasonic_driver_init_trigger_timer() {
 	TIM2->CCER &= (uint16_t) ~TIM_CCER_CC4P;
 	TIM2->CCER |= TIM_OCPOLARITY_HIGH << 12;
 
-	TIM2->CCER |= TIM_CCER_CC1E; // Enable compare output channel 1
+	TIM2->CCER |= TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E; // Enable all channels
 }
 
 static void ultrasonic_driver_trigger_channel(int channel) {
-	// Disable channels that are not being triggered.
-	TIM2->CCER &= (uint16_t) ~(TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E);
+	// Program each channel to never activate so they all stay low.
+	TIM2->CCR1 = 0xffffffff;
+	TIM2->CCR2 = 0xffffffff;
+	TIM2->CCR3 = 0xffffffff;
+	TIM2->CCR4 = 0xffffffff;
 
-	// Enable the channel that is being triggered.
+	// Program only the channel that we're triggering to activate when the timer is nonzero.
 	switch(channel) {
 	case 0:
-		TIM2->CCER |= TIM_CCER_CC1E;
+		TIM2->CCR1 = 1;
 		break;
 	case 1:
-		TIM2->CCER |= TIM_CCER_CC2E;
+		TIM2->CCR2 = 1;
 		break;
 	case 2:
-		TIM2->CCER |= TIM_CCER_CC3E;
+		TIM2->CCR3 = 1;
 		break;
 	case 3:
-		TIM2->CCER |= TIM_CCER_CC4E;
+		TIM2->CCR4 = 1;
 		break;
 	default:
 		break;
