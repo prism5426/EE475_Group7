@@ -40,7 +40,7 @@ static void ultrasonic_driver_init_trigger_timer() {
 	__HAL_RCC_TIM2_CLK_ENABLE();
 
 	// Calculate prescaler value so TIM2 counts in "fractional microseconds".
-	uint16_t prescaler = (uint16_t) (APB1_TIMER_FREQUENCY / 1000000 / FRACTIONAL_US) - 1;
+	const uint16_t prescaler = (uint16_t) (APB1_TIMER_FREQUENCY / 1000000 / FRACTIONAL_US) - 1;
 
 	// Program the timer in upcounting mode.
 	TIM2->CR1 &= ~(TIM_CR1_DIR | TIM_CR1_CMS); // Upcounter
@@ -69,8 +69,8 @@ static void ultrasonic_driver_init_trigger_timer() {
 	// Enable one-pulse mode (clears counter enable bit when counter hits ARR and stops timer)
 	TIM2->CR1 |= TIM_CR1_OPM;
 
-	/* We program each channel to output, in output compare mode PWM1.
-	 * This mode causes the channel to output a 1 when the counter is less than the channel's CCR register.
+	/* We program each channel to output, in output compare mode PWM2.
+	 * This mode causes the channel to output a 0 when the counter is less than the channel's CCR register.
 	 */
 
 	// Program channel 1 mode
@@ -104,7 +104,6 @@ static void ultrasonic_driver_init_trigger_timer() {
 	TIM2->CCER |= TIM_OCPOLARITY_HIGH << 12;
 
 	TIM2->CCER |= TIM_CCER_CC1E; // Enable compare output channel 1
-	TIM2->CR1  |= TIM_CR1_CEN;   // Start the counter
 }
 
 static void ultrasonic_driver_trigger_channel(int channel) {
