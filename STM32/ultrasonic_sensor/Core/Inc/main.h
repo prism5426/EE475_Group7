@@ -75,18 +75,7 @@ void Error_Handler(void);
 #define Echo3_Pin GPIO_PIN_7
 #define Echo3_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
-#define Trigger0_Pin GPIO_PIN_0
-#define Trigger0_GPIO_Port GPIOC
-#define Echo0_Pin GPIO_PIN_1
-#define Echo0_GPIO_Port GPIOC
-#define Trigger1_Pin GPIO_PIN_2
-#define Trigger1_GPIO_Port GPIOC
-#define Echo1_Pin GPIO_PIN_3
-#define Echo1_GPIO_Port GPIOC
-#define Trigger2_Pin GPIO_PIN_4
-#define Trigger2_GPIO_Port GPIOC
-#define Echo2_Pin GPIO_PIN_5
-#define Echo2_GPIO_Port GPIOC
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
