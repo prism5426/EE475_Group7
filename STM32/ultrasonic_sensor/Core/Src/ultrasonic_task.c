@@ -90,10 +90,14 @@ void ultrasonic_task_init() {
 	// Enable interrupts for TIM1
 	HAL_NVIC_SetPriority(TIM1_CC_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(TIM1_CC_IRQn);
+	HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
 
 	// TODO: Enable interrupts for TIM8
 	//HAL_NVIC_SetPriority(TIM8_CC_IRQn, 0, 0);
 	//HAL_NVIC_EnableIRQ(TIM8_CC_IRQn);
+	//HAL_NVIC_SetPriority(TIM8_UP_TIM13_IRQn, 0, 0);
+	//HAL_NVIC_EnableIRQ(TIM8_UP_TIM13_IRQn);
 }
 
 void ultrasonic_task_run() {
@@ -117,6 +121,7 @@ void ultrasonic_task_run() {
 			case ULTRASONIC_STATE_PULSE_ENDED:
 			case ULTRASONIC_STATE_OVERCAPTURED:
 			case ULTRASONIC_STATE_ERROR:
+			case ULTRASONIC_STATE_TIMED_OUT:
 				is_done = true;
 				break;
 			default:
@@ -226,8 +231,7 @@ static void ultrasonic_driver_init_echo_timer(TIM_TypeDef *tim, int timer_freque
 	tim->CR1 |= TIM_CLOCKDIVISION_DIV1;
 
 	// Set auto-reload as high as it will go.
-	// TODO: change this to stop a measurement attempt at 40ms
-	tim->ARR = 0xffffffff; // This is a little over an hour
+	tim->ARR = 40 * 1000 * FRACTIONAL_US; // Expire the timer after 40ms
 
 	// Program prescaler.
 	tim->PSC = prescaler;
@@ -240,7 +244,11 @@ static void ultrasonic_driver_init_echo_timer(TIM_TypeDef *tim, int timer_freque
 	tim->SMCR |= trigger_select; // Select the internal trigger that corresponds to the trigger timer.
 	tim->SMCR |= TIM_SLAVEMODE_TRIGGER;
 
-	// We don't use one-pulse mode because we disable the timer manually via interrupt.
+	// Enable one-pulse mode (clears counter enable bit when counter hits ARR and stops timer)
+	tim->CR1 |= TIM_CR1_OPM;
+
+	// Only produce update interrupts on counter overflow (timer expiry), and not when we induce update events via software.
+	tim->CR1 |= TIM_CR1_URS;
 
 	// Disable all channels
 	tim->CCER &= (uint16_t) ~(TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E);
@@ -271,6 +279,9 @@ static void ultrasonic_driver_init_echo_timer(TIM_TypeDef *tim, int timer_freque
 
 	// Enable interrupts on all channels
 	tim->DIER |= TIM_DIER_CC1IE | TIM_DIER_CC2IE | TIM_DIER_CC3IE | TIM_DIER_CC4IE;
+
+	// Enable update (timer expiry) interrupt
+	tim->DIER |= TIM_DIER_UIE;
 }
 
 static void ultrasonic_driver_trigger_sensor(int sensor_index) {
@@ -474,6 +485,27 @@ void TIM1_CC_IRQHandler() {
 	}
 }
 
+void TIM1_UP_TIM10_IRQHandler() {
+	if (TIM1->SR & TIM_SR_UIF) {
+		// Timer 1 expired; time out any active sensor.
+
+		// Clear interrupt pending flag.
+		TIM1->SR &= (uint16_t) ~TIM_SR_UIF;
+
+		if (ultrasonic_active_tim1 == -1) {
+			// No sensor was active? The timer should've been disabled. This is weird.
+			ultrasonic_driver_stat_spurious_irqs++;
+			return;
+		}
+
+		ultrasonic_driver_end_sensor(ultrasonic_active_tim1);
+		ultrasonic_sensors[ultrasonic_active_tim1].state = ULTRASONIC_STATE_TIMED_OUT;
+		ultrasonic_active_tim1 = -1;
+	} else {
+		ultrasonic_driver_stat_spurious_irqs++;
+	}
+}
+
 void TIM8_CC_IRQHandler() {
 	// Check which channels triggered IRQ and pass them off to ultrasonic_driver_handle_capture.
 
@@ -491,5 +523,26 @@ void TIM8_CC_IRQHandler() {
 
 	if (TIM8->SR & TIM_SR_CC4IF) {
 		ultrasonic_driver_handle_capture(&ultrasonic_active_tim8, 4, TIM8->CCR4, (TIM8->SR & TIM_SR_CC4OF) != 0);
+	}
+}
+
+void TIM8_UP_TIM13_IRQHandler() {
+	if (TIM8->SR & TIM_SR_UIF) {
+		// Timer 8 expired; time out any active sensor.
+
+		// Clear interrupt pending flag.
+		TIM8->SR &= (uint16_t) ~TIM_SR_UIF;
+
+		if (ultrasonic_active_tim8 == -1) {
+			// No sensor was active? The timer should've been disabled. This is weird.
+			ultrasonic_driver_stat_spurious_irqs++;
+			return;
+		}
+
+		ultrasonic_driver_end_sensor(ultrasonic_active_tim8);
+		ultrasonic_sensors[ultrasonic_active_tim8].state = ULTRASONIC_STATE_TIMED_OUT;
+		ultrasonic_active_tim8 = -1;
+	} else {
+		ultrasonic_driver_stat_spurious_irqs++;
 	}
 }
