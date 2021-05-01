@@ -60,6 +60,7 @@ static void MX_I2C1_Init(void);
 /* USER CODE BEGIN 0 */
 int __io_putchar(int ch) {
 	ITM_SendChar(ch);
+	return 0;
 }
 /* USER CODE END 0 */
 
