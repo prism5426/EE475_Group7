@@ -29,6 +29,7 @@
 
 #include "ultrasonic_driver.h"
 #include "ultrasonic_task.h"
+#include "scheduler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -130,9 +131,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  // There is nothing useful to do when we're not reacting to interrupts.
-	  HAL_PWR_EnableSleepOnExit();
-	  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+	  sched_execute();
+	  /* There is nothing useful to do when we're not reacting to interrupts, so sleep until an interrupt occurs.
+	   * Note that we don't use HAL_PWR_EnterSLEEPMode here. This is because we want to make sure that if an interrupt occurs
+	   * and schedules a task after we determined that there were no more scheduled tasks but before we __WFE(), we want to wake
+	   * up immediately to execute the newly scheduled task without ever actually going to sleep. We do this by using the
+	   * __SEV() instruction every time we schedule work to be done, so __WFE() will see that the event register is set and
+	   * will not sleep. However, HAL_PWR_EnterSLEEPMode uses a special sequence that clears the event register before sleeping,
+	   * which, frankly, defeats the purpose of using __WFE() in the first place so I don't know why they do this. */
+	  __WFE();
   }
   /* USER CODE END 3 */
 }

@@ -14,15 +14,11 @@ void sched_request(SchedulableTask task) {
 	// Set the flag that the task needs to be executed.
 	task_requests[task] = true;
 
-	// Trigger a PendSV interrupt.
-	SCB->ICSR|= SCB_ICSR_PENDSVSET_Msk;
+	// Set the event register so that WFE won't sleep when it's not supposed to.
+	__SEV();
 }
 
 void sched_execute() {
-	// Clear the interrupt flag first. If any more tasks are requested while we are executing,
-	// then this flag will be reset and we will reenter the PendSV handler.
-	SCB->ICSR|= SCB_ICSR_PENDSVCLR_Msk;
-
 	// Iterate over all the tasks.
 	for (int i = 0; i < SCHED_TASK_COUNT; i++) {
 		if (task_requests[i]) {
