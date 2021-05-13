@@ -1,3 +1,5 @@
+#include "ultrasonic_driver.h"
+
 #include<stm32f4xx_hal.h>
 #include<stm32f4xx_hal_tim.h>
 
@@ -5,7 +7,6 @@
 #include<stdbool.h>
 #include<stdio.h>
 #include<stdint.h>
-#include <ultrasonic_driver.h>
 
 #include "util.h"
 
@@ -436,7 +437,6 @@ static void ultrasonic_driver_handle_capture(volatile UltrasonicMeasurement *vol
 				*active_measurement_ptr = NULL;
 			}
 			break;
-		case ULTRASONIC_STATE_INITIAL:      // fall-through
 		case ULTRASONIC_STATE_PULSE_ENDED:  // fall-through
 		case ULTRASONIC_STATE_OVERCAPTURED: // fall-through
 			// It should not be possible for an ultrasonic to be active on a timer while in any of these states.

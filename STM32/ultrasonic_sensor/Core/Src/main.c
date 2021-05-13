@@ -63,6 +63,18 @@ int __io_putchar(int ch) {
 	ITM_SendChar(ch);
 	return 0;
 }
+
+static void ultrasonic_callback(int *pulse_widths) {
+	printf("Reached end of schedule.\n");
+	for (int i = 0; i < ULTRASONIC_NUM_SENSORS; i++) {
+		printf("  [%d]: %d\n", i, pulse_widths[i]);
+	}
+
+	// Start polling the sensors again.
+	if (ultrasonic_task_poll() != R_OK) {
+		// TODO: abort
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -93,7 +105,23 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  ultrasonic_task_init();
+
+    // Configure sensor polling order for ultrasonic task.
+  	static const UltrasonicScheduleEntry ultrasonic_schedule[] = {
+  		{ 0,  4},
+  		{ 1,  5},
+  		{ 2,  6},
+  		{ 3, -1},
+  		{-1, -1} // schedule is terminated by an empty entry
+  	};
+
+  	// Initialize the ultrasonic task.
+  	ultrasonic_task_init(ultrasonic_schedule, ultrasonic_callback);
+
+  	// Start polling
+  	if (ultrasonic_task_poll() != R_OK) {
+  		// TODO: abort
+  	}
   /* USER CODE END 2 */
 
   /* Infinite loop */
