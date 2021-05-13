@@ -8,7 +8,7 @@
 
 #include "util.h"
 
-#define FRACTIONAL_US 4
+#define FRACTIONAL_US 1
 #define APB1_TIMER_FREQUENCY  84000000 // 84 MHz
 #define APB2_TIMER_FREQUENCY 168000000 // 168 MHz
 
