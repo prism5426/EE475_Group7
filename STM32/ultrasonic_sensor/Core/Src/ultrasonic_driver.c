@@ -1,6 +1,7 @@
 #include<stm32f4xx_hal.h>
 #include<stm32f4xx_hal_tim.h>
 
+#include<assert.h>
 #include<stdbool.h>
 #include<stdio.h>
 #include<stdint.h>
@@ -12,12 +13,12 @@
 #define APB1_TIMER_FREQUENCY  84000000 // 84 MHz
 #define APB2_TIMER_FREQUENCY 168000000 // 168 MHz
 
-typedef struct {
+struct UltrasonicHardware {
 	TIM_TypeDef *tim_trigger;
 	TIM_TypeDef *tim_echo;
 	int tim_trigger_channel;
 	int tim_echo_channel;
-} UltrasonicHardware;
+};
 
 static const UltrasonicHardware ultrasonic_hardware[7] = {
 	{TIM3, TIM1, 1, 1},
@@ -29,11 +30,9 @@ static const UltrasonicHardware ultrasonic_hardware[7] = {
 	{TIM5, TIM8, 3, 4}
 };
 
-static volatile int ultrasonic_active_tim1;
-static volatile int ultrasonic_active_tim8;
+static volatile UltrasonicMeasurement *volatile ultrasonic_active_tim1;
+static volatile UltrasonicMeasurement *volatile ultrasonic_active_tim8;
 static volatile int ultrasonic_driver_stat_spurious_irqs;
-
-volatile Ultrasonic ultrasonic_sensors[7];
 
 /* @brief Initializes a hardware timer that is used to generate trigger signals.
  * @param tim The timer to initialize
@@ -48,33 +47,23 @@ static void ultrasonic_driver_init_trigger_timer(TIM_TypeDef *tim, int timer_fre
  */
 static void ultrasonic_driver_init_echo_timer(TIM_TypeDef *tim, int timer_frequency, uint16_t trigger_select);
 
-/* @brief Triggers an ultrasonic sensor.
- * @param sensor_index Which sensor to trigger. Ranges between [0, 6] inclusive.
- */
-static void ultrasonic_driver_trigger_sensor(int sensor_index);
-
 /* @brief Called by \ref ultrasonic_driver_handle_capture when a pulse has finished (or the measurement attempt was otherwise given up) to clean up timers.
- * @param sensor_index Which sensor to end. Ranges between [0, 6] inclusive.
+ * @param hw Hardware struct representing the sensor and timer resources to end.
  */
-static void ultrasonic_driver_end_sensor(int sensor_index);
+static void ultrasonic_driver_end_sensor(const UltrasonicHardware *hw);
 
 /* @brief Called by timer IRQ handlers when a capture occurs.
- * @param ultrasonic_active Pointer to the ultrasonic_active variable for the timer that caused this call
+ * @param active_measurement Pointer to the ultrasonic_active variable for the timer that caused this call
  * @param channel The channel ([1, 4] inclusive) which was captured
  * @param capture The value that was captured by the channel
  * @param overcaptured True if the channel's overcapture flag was set
  */
-static void ultrasonic_driver_handle_capture(volatile int *ultrasonic_active, int channel, uint32_t capture, bool overcaptured);
+static void ultrasonic_driver_handle_capture(volatile UltrasonicMeasurement *volatile *active_measurement, int channel, uint32_t capture, bool overcaptured);
 
-void ultrasonic_task_init() {
-	// Initialize sensor states.
-	for (int i = 0; i < ARRAY_LENGTH(ultrasonic_sensors); i++) {
-		ultrasonic_sensors[i].state = ULTRASONIC_STATE_INITIAL;
-	}
-
-	// Clear IRQ handler variables.
-	ultrasonic_active_tim1 = -1;
-	ultrasonic_active_tim8 = -1;
+void ultrasonic_driver_init() {
+	// Clear active measurements.
+	ultrasonic_active_tim1 = NULL;
+	ultrasonic_active_tim8 = NULL;
 
 	// Spurious IRQ count
 	ultrasonic_driver_stat_spurious_irqs = 0;
@@ -101,47 +90,6 @@ void ultrasonic_task_init() {
 	HAL_NVIC_EnableIRQ(TIM8_CC_IRQn);
 	HAL_NVIC_SetPriority(TIM8_UP_TIM13_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(TIM8_UP_TIM13_IRQn);
-}
-
-void ultrasonic_task_run() {
-	volatile Ultrasonic *us = &ultrasonic_sensors[0];
-
-	UltrasonicState last_observed_state = us->state;
-
-	printf("Triggering sensor!\r\n");
-
-	ultrasonic_driver_trigger_sensor(0);
-
-	while (true) {
-		while (last_observed_state == us->state) {
-			HAL_Delay(1);
-		}
-		last_observed_state = us->state;
-		printf("State changed to %d\r\n", last_observed_state);
-
-		bool is_done;
-		switch (last_observed_state) {
-			case ULTRASONIC_STATE_PULSE_ENDED:
-			case ULTRASONIC_STATE_OVERCAPTURED:
-			case ULTRASONIC_STATE_ERROR:
-			case ULTRASONIC_STATE_TIMED_OUT:
-				is_done = true;
-				break;
-			default:
-				is_done = false;
-				break;
-		}
-
-		if (is_done) {
-			break;
-		}
-	}
-
-	printf("Finished:\r\n");
-	printf("  pulse begin at %lu us (%lu)\r\n", us->pulse_begin / FRACTIONAL_US, us->pulse_begin);
-	printf("  pulse   end at %lu us (%lu)\r\n", us->pulse_end / FRACTIONAL_US, us->pulse_end);
-	printf("           delta %lu us (%lu)\r\n", (us->pulse_end - us->pulse_begin) / FRACTIONAL_US, (us->pulse_end - us->pulse_begin));
-	printf("  spurious IRQs: %d\r\n", ultrasonic_driver_stat_spurious_irqs);
 }
 
 static void ultrasonic_driver_init_trigger_timer(TIM_TypeDef *tim, int timer_frequency) {
@@ -290,10 +238,31 @@ static void ultrasonic_driver_init_echo_timer(TIM_TypeDef *tim, int timer_freque
 	tim->DIER |= TIM_DIER_UIE;
 }
 
-static void ultrasonic_driver_trigger_sensor(int sensor_index) {
-	// TODO: assert precondition
+ResultCode ultrasonic_driver_trigger_sensor(int sensor_index, UltrasonicMeasurement *measurement) {
+	// Assert that the sensor index is good.
+	if (sensor_index < 0 || sensor_index >= ARRAY_LENGTH(ultrasonic_hardware)) {
+		return R_ULTRASONIC_INVALID_SENSOR;
+	}
+
+	// Assert that we have a good callback.
+	if (measurement->callback == NULL) {
+		return R_INVALID_INPUT;
+	}
 
 	const UltrasonicHardware *hw = &ultrasonic_hardware[sensor_index];
+
+	// Assert that the sensor group is not busy.
+	if (hw->tim_echo == TIM1) {
+		if (ultrasonic_active_tim1 != NULL) {
+			return R_ULTRASONIC_GROUP_BUSY;
+		}
+	} else if (hw->tim_echo == TIM8) {
+		if (ultrasonic_active_tim8 != NULL) {
+			return R_ULTRASONIC_GROUP_BUSY;
+		}
+	} else {
+		return R_ULTRASONIC_INVALID_SENSOR;
+	}
 
 	// Reprogram the echo timer
 	{
@@ -371,27 +340,29 @@ static void ultrasonic_driver_trigger_sensor(int sensor_index) {
 		}
 	}
 
-	// Reset IRQ handler state machine.
-	ultrasonic_sensors[sensor_index].state = ULTRASONIC_STATE_TRIGGERED;
-	ultrasonic_sensors[sensor_index].pulse_begin = 0xffffffff;
-	ultrasonic_sensors[sensor_index].pulse_end   = 0xffffffff;
+	// Reset measurement state machine and values.
+	measurement->state = ULTRASONIC_STATE_TRIGGERED;
+	measurement->pulse_begin = -1;
+	measurement->pulse_end = -1;
+	measurement->hw = hw;
 
 	// Set active sensor for timer IRQ.
 	if (hw->tim_echo == TIM1) {
-		ultrasonic_active_tim1 = sensor_index;
+		ultrasonic_active_tim1 = measurement;
 	} else if (hw->tim_echo == TIM8) {
-		ultrasonic_active_tim8 = sensor_index;
+		ultrasonic_active_tim8 = measurement;
 	} else {
-		// TODO: abort
+		// Checked earlier.
+		__builtin_unreachable();
 	}
 
 	// Start the trigger timer.
 	hw->tim_trigger->CR1 |= TIM_CR1_CEN;
+
+	return R_OK;
 }
 
-static void ultrasonic_driver_end_sensor(int sensor_index) {
-	const UltrasonicHardware *hw = &ultrasonic_hardware[sensor_index];
-
+static void ultrasonic_driver_end_sensor(const UltrasonicHardware *hw) {
 	// Disable echo channel
 	switch (hw->tim_echo_channel) {
 		case 1:
@@ -419,44 +390,50 @@ static void ultrasonic_driver_end_sensor(int sensor_index) {
 	hw->tim_trigger->CNT = 0;
 }
 
-static void ultrasonic_driver_handle_capture(volatile int *ultrasonic_active, int channel, uint32_t capture, bool overcaptured) {
-	if (*ultrasonic_active == -1) {
+static void ultrasonic_driver_handle_capture(volatile UltrasonicMeasurement *volatile *active_measurement_ptr, int channel, uint32_t capture, bool overcaptured) {
+	volatile UltrasonicMeasurement *active_measurement = *active_measurement_ptr;
+
+	if (active_measurement == NULL) {
 		// Spurious interrupt when no sensor was active on this timer. Weird, but nothing we can do.
 		ultrasonic_driver_stat_spurious_irqs++;
 		return;
 	}
 
-	volatile Ultrasonic *ultrasonic = &ultrasonic_sensors[*ultrasonic_active];
-	const UltrasonicHardware *hw = &ultrasonic_hardware[*ultrasonic_active];
-
-	if( hw->tim_echo_channel != channel) {
+	if (active_measurement->hw->tim_echo_channel != channel) {
 		// Spurious interrupt on wrong channel. Weird, but nothing we can do.
 		ultrasonic_driver_stat_spurious_irqs++;
 		return;
 	}
 
-	switch (ultrasonic->state) {
+	switch (active_measurement->state) {
 		case ULTRASONIC_STATE_TRIGGERED:
 			if (overcaptured) {
-				ultrasonic->state = ULTRASONIC_STATE_OVERCAPTURED;
-				ultrasonic_driver_end_sensor(*ultrasonic_active);
-				*ultrasonic_active = -1;
+				active_measurement->state = ULTRASONIC_STATE_OVERCAPTURED;
+				ultrasonic_driver_end_sensor(active_measurement->hw);
+				active_measurement->callback(active_measurement);
+
+				*active_measurement_ptr = NULL;
 			} else {
-				ultrasonic->pulse_begin = capture;
-				ultrasonic->state = ULTRASONIC_STATE_PULSE_BEGAN;
+				active_measurement->pulse_begin = capture;
+
+				active_measurement->state = ULTRASONIC_STATE_PULSE_BEGAN;
+				active_measurement->callback(active_measurement);
 			}
 			break;
 		case ULTRASONIC_STATE_PULSE_BEGAN:
 			if (overcaptured) {
 				// Overcapture shouldn't be happening on the falling edge.
-				ultrasonic->state = ULTRASONIC_STATE_ERROR;
-				ultrasonic_driver_end_sensor(*ultrasonic_active);
-				*ultrasonic_active = -1;
+				active_measurement->state = ULTRASONIC_STATE_ERROR;
+				ultrasonic_driver_end_sensor(active_measurement->hw);
+				active_measurement->callback(active_measurement);
+
+				*active_measurement_ptr = NULL;
 			} else {
-				ultrasonic->pulse_end = capture;
-				ultrasonic->state = ULTRASONIC_STATE_PULSE_ENDED;
-				ultrasonic_driver_end_sensor(*ultrasonic_active);
-				*ultrasonic_active = -1;
+				active_measurement->pulse_end = capture;
+				active_measurement->state = ULTRASONIC_STATE_PULSE_ENDED;
+				ultrasonic_driver_end_sensor(active_measurement->hw);
+				active_measurement->callback(active_measurement);
+				*active_measurement_ptr = NULL;
 			}
 			break;
 		case ULTRASONIC_STATE_INITIAL:      // fall-through
@@ -498,15 +475,18 @@ void TIM1_UP_TIM10_IRQHandler() {
 		// Clear interrupt pending flag.
 		TIM1->SR &= (uint16_t) ~TIM_SR_UIF;
 
-		if (ultrasonic_active_tim1 == -1) {
+		volatile UltrasonicMeasurement *active_measurement = ultrasonic_active_tim1;
+
+		if (active_measurement == NULL) {
 			// No sensor was active? The timer should've been disabled. This is weird.
 			ultrasonic_driver_stat_spurious_irqs++;
 			return;
 		}
 
-		ultrasonic_driver_end_sensor(ultrasonic_active_tim1);
-		ultrasonic_sensors[ultrasonic_active_tim1].state = ULTRASONIC_STATE_TIMED_OUT;
-		ultrasonic_active_tim1 = -1;
+		ultrasonic_driver_end_sensor(active_measurement->hw);
+		active_measurement->state = ULTRASONIC_STATE_TIMED_OUT;
+		active_measurement->callback(active_measurement);
+		ultrasonic_active_tim1 = NULL;
 	} else {
 		ultrasonic_driver_stat_spurious_irqs++;
 	}
@@ -539,15 +519,18 @@ void TIM8_UP_TIM13_IRQHandler() {
 		// Clear interrupt pending flag.
 		TIM8->SR &= (uint16_t) ~TIM_SR_UIF;
 
-		if (ultrasonic_active_tim8 == -1) {
+		volatile UltrasonicMeasurement *active_measurement = ultrasonic_active_tim8;
+
+		if (active_measurement == NULL) {
 			// No sensor was active? The timer should've been disabled. This is weird.
 			ultrasonic_driver_stat_spurious_irqs++;
 			return;
 		}
 
-		ultrasonic_driver_end_sensor(ultrasonic_active_tim8);
-		ultrasonic_sensors[ultrasonic_active_tim8].state = ULTRASONIC_STATE_TIMED_OUT;
-		ultrasonic_active_tim8 = -1;
+		ultrasonic_driver_end_sensor(active_measurement->hw);
+		active_measurement->state = ULTRASONIC_STATE_TIMED_OUT;
+		active_measurement->callback(active_measurement);
+		ultrasonic_active_tim8 = NULL;
 	} else {
 		ultrasonic_driver_stat_spurious_irqs++;
 	}
