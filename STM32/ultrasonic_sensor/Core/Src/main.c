@@ -102,9 +102,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_Delay(500);
-	  printf("Hello\r\n");
-	  ultrasonic_task_run();
+	  // There is nothing useful to do when we're not reacting to interrupts.
+	  HAL_PWR_EnableSleepOnExit();
+	  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
   }
   /* USER CODE END 3 */
 }
@@ -237,7 +237,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 /* USER CODE END 4 */
 
 /**
