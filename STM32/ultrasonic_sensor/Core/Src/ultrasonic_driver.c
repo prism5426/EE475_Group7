@@ -308,7 +308,7 @@ ResultCode ultrasonic_driver_trigger_sensor(int sensor_index, UltrasonicMeasurem
 				hw->tim_echo->CCER |= TIM_CCER_CC4E;
 				break;
 			default:
-				// TODO: abort
+				app_abort();
 				break;
 		}
 	}
@@ -336,7 +336,7 @@ ResultCode ultrasonic_driver_trigger_sensor(int sensor_index, UltrasonicMeasurem
 			hw->tim_trigger->CCR4 = 1;
 			break;
 		default:
-			// TODO: abort
+			app_abort();
 			break;
 		}
 	}
@@ -379,7 +379,7 @@ static void ultrasonic_driver_end_sensor(const UltrasonicHardware *hw) {
 			hw->tim_echo->CCER &= (uint16_t) ~TIM_CCER_CC4E;
 			break;
 		default:
-			// TODO: abort
+			app_abort();
 			break;
 	}
 
@@ -440,10 +440,10 @@ static void ultrasonic_driver_handle_capture(volatile UltrasonicMeasurement *vol
 		case ULTRASONIC_STATE_PULSE_ENDED:  // fall-through
 		case ULTRASONIC_STATE_OVERCAPTURED: // fall-through
 			// It should not be possible for an ultrasonic to be active on a timer while in any of these states.
-			// TODO: abort
+			app_abort();
 			break;
 		default:
-			// TODO: abort
+			app_abort();
 			break;
 	}
 }

@@ -91,15 +91,11 @@ static void ultrasonic_begin_schedule_entry(int index) {
 	// Need to have ultrasonic_sensors_active stable before this point, since after this we're liable to be interrupted.
 
 	if (schedule_entry->sensor_a != -1) {
-		if (ultrasonic_driver_trigger_sensor(schedule_entry->sensor_a, &measurement_a) != R_OK) {
-			// TODO: abort
-		}
+		app_assert_ok(ultrasonic_driver_trigger_sensor(schedule_entry->sensor_a, &measurement_a));
 	}
 
 	if (schedule_entry->sensor_b != -1) {
-		if (ultrasonic_driver_trigger_sensor(schedule_entry->sensor_b, &measurement_b) != R_OK) {
-			// TODO: abort
-		}
+		app_assert_ok(ultrasonic_driver_trigger_sensor(schedule_entry->sensor_b, &measurement_b));
 	}
 }
 
@@ -109,7 +105,7 @@ static void ultrasonic_measurement_updated(const volatile UltrasonicMeasurement 
 	switch (measurement->state) {
 		case ULTRASONIC_STATE_TRIGGERED:
 			// Callback shouldn't be called for this state.
-			// TODO: abort?
+			app_abort();
 			break;
 		case ULTRASONIC_STATE_PULSE_BEGAN:
 			// Don't care.

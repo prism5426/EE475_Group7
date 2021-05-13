@@ -30,6 +30,7 @@
 #include "ultrasonic_driver.h"
 #include "ultrasonic_task.h"
 #include "scheduler.h"
+#include "util.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,9 +73,7 @@ static void ultrasonic_callback(int *pulse_widths) {
 	}
 
 	// Start polling the sensors again.
-	if (ultrasonic_task_poll() != R_OK) {
-		// TODO: abort
-	}
+	app_assert_ok(ultrasonic_task_poll());
 }
 /* USER CODE END 0 */
 
@@ -120,9 +119,7 @@ int main(void)
   	ultrasonic_task_init(ultrasonic_schedule, ultrasonic_callback);
 
   	// Start polling
-  	if (ultrasonic_task_poll() != R_OK) {
-  		// TODO: abort
-  	}
+  	app_assert_ok(ultrasonic_task_poll());
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -272,6 +269,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void __app_abort(const char *file, int line) {
+	printf("Abort: %s:%d\r\n", file, line);
+	while (1) {
+		// Infinite loop
+	}
+}
 /* USER CODE END 4 */
 
 /**
@@ -300,8 +303,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	__app_abort((const char*) file, line);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
