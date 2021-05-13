@@ -1,11 +1,10 @@
-#include "ultrasonic_task.h"
-
 #include<stm32f4xx_hal.h>
 #include<stm32f4xx_hal_tim.h>
 
 #include<stdbool.h>
 #include<stdio.h>
 #include<stdint.h>
+#include <ultrasonic_driver.h>
 
 #include "util.h"
 
