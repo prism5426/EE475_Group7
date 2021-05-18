@@ -4,15 +4,16 @@ from PIL import Image, ImageTk
 from i2c_test import * 
 from camera_test import * 
 
-UPDATE_RATE = 1000
+UPDATE_RATE = 50
  
 class Application(tkinter.Frame):
     """ GUI """
     
     def __init__(self, master=None):
         """ Initialize the Frame"""
-        self.THRESHOLD = 300
+        self.THRESHOLD = 400
         self.counter = 0
+        self.num_sensor = 4
         lr_offset = 180
         lr_h = 250
         button_offset = 50
@@ -23,8 +24,10 @@ class Application(tkinter.Frame):
         self.pack()
         self.create_button()
         self.create_canvas()
-        self.distance = [200 for i in range(4)]
-        self.prev_arc = [[0 for i in range(4)] for j in range(4)]
+        self.FIFO_LEN = 3
+        self.dist_buffer = [[0 for i in range(self.FIFO_LEN)] for j in range(self.num_sensor)]
+        self.dist_avg = [0 for i in range(self.num_sensor)]
+        self.prev_arc = [[0 for i in range(self.num_sensor)] for j in range(self.num_sensor)]
         self.updater()
 
 
@@ -50,11 +53,12 @@ class Application(tkinter.Frame):
         self.canvas.update()
 
 
-    def create_radar(self, h_arr):
+    def create_radar(self):
         angle = 40
-
+        h_arr = self.dist_avg
+        print(h_arr)
         # use len(h_arr) for all sensors
-        for i in range(4):
+        for i in range(self.num_sensor):
             cx, cy, direction = self.us_pos[i]
             x1, y1, x2, y2 = self.calc_coor(cx, cy, h_arr[i])
             
@@ -70,7 +74,7 @@ class Application(tkinter.Frame):
             'D' :270
             }
             start_angle = switcher.get(direction)
-            print(direction, start_angle)
+            #print(direction, start_angle)
             self.arc = self.canvas.create_arc(x1_old, y1_old, x2_old, y2_old, start = start_angle-angle/2, extent = angle, outline = "black",
                               fill = "black", width = 2)
             # update prev arc
@@ -99,11 +103,17 @@ class Application(tkinter.Frame):
 
     def updater(self):
         raw_data = read_data() 
-        self.distance = cal_distance(raw_data) 
         #print(self.distance)
-        self.create_radar(self.distance)
+        self.update_dist_buffer(cal_distance(raw_data))
+        self.create_radar()
         self.after(UPDATE_RATE, self.updater)
 
+    def update_dist_buffer(self, data):
+        for i in range(self.num_sensor): 
+            if (data[i] != -1) :
+                prev = self.dist_buffer[i].pop()
+                self.dist_buffer[i].insert(0, data[i])
+                self.dist_avg[i] += (data[i] - prev) / self.FIFO_LEN
 
     def click_start_video(self):
         return None
