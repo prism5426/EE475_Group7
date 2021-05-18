@@ -2,14 +2,14 @@ import time
 import tkinter
 #from camera_test import * TODO remove comment
 
-UPDATE_RATE = 1000
+UPDATE_RATE = 100
  
 class Application(tkinter.Frame):
     """ GUI """
  
     def __init__(self, master=None):
         """ Initialize the Frame"""
-
+        self.THRESHOLD = 300
         self.counter = 0
         self.size = [[100,100,300,300],[100/2, 200/2, 400/2, 400/2]]
         super().__init__(master)
@@ -48,7 +48,7 @@ class Application(tkinter.Frame):
                           fill = "blue", width = 2)'''
 
     def create_radar(self, x1, y1, x2, y2):
-        angle = 60
+        angle = 40
 
         # erase prev arc
         x1_old = self.prev_arc[0]
@@ -72,11 +72,30 @@ class Application(tkinter.Frame):
         print(self.counter)
         i = self.counter
         # self.create_radar(self.size[i][0], self.size[i][1], self.size[i][2], self.size[i][3])
-        self.create_radar(100 + self.counter, 100, 300 - self.counter, 300 - self.counter)
-        self.counter+=1
+        # self.create_radar(100 - self.counter, 100, 300 + self.counter, 300 + self.counter)
+        
+        x1, y1, x2, y2 = self.calc_coor(200, 320, 200+self.counter, 200+(self.counter))
+        #self.canvas.create_rectangle(x1, y1, x2, y2, outline = "red")
+        self.create_radar(x1, y1, x2, y2)
+        self.counter+=10
         '''if self.counter == 2:
             self.counter = 0'''
         
+    def calc_coor(self, cx, cy, w, h):
+        if w < 0 or h < 0:
+            w = 0
+            h = 0
+        elif h > self.THRESHOLD:
+            h = self.THRESHOLD
+            w = self.THRESHOLD
+        #x1, y1, x2, y2 = 0,0,0,0
+    
+        y1 = cy - h/2
+        y2 = cy + h/2
+        x1 = cx - w/2
+        x2 = cx + w/2
+        return x1, y1, x2, y2
+
     def updater(self):
         #self.create_canvas()
         #self.update_canvas()
