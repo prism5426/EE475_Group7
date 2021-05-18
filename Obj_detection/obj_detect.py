@@ -1,74 +1,70 @@
-from tkinter import *
 import time
-from camera_test import *
+import tkinter
+#from camera_test import * TODO remove comment
 
-def main(x1, y1, x2, y2):
-    # creating tinker window
-    root = Tk()
-
-    gui = Window(root)
-    windX, windY = 500,500
-    frame=Frame(root,width=windX,height=windY)
-    frame.pack(expand = True, fill=BOTH)
-    
-    # car
-    canvas = Canvas(frame,bg='black', width = windX, height = windY)
-    
-    file = PhotoImage(file = "car_model.png")
-    image = canvas.create_image(windX//2, windY//3, image=file)
-    
-
-
-    #canvas.create_oval(60,60,210,210)
-
-    canvas.create_arc(x1, y1, x2, y2, start = 210,
-                          extent = 180-60, outline = "green",
-                          fill = "blue", width = 2)
-    
-    canvas.pack(expand = False)
-    root.wm_title("UI")
-    #root.geometry("500x500")
-    root.mainloop()
-
-class Window(Frame):
-    
+UPDATE_RATE = 1000
+ 
+class Application(tkinter.Frame):
+    """ GUI """
+ 
     def __init__(self, master=None):
+        """ Initialize the Frame"""
 
+        self.counter = 0
+        self.size = [[100,100,300,300],[100/2, 200/2, 400/2, 400/2]]
+        super().__init__(master)
+        self.master = master
+        self.pack()
+        self.create_button()
+        self.create_canvas()
+        #self.create_canvas()
+        self.updater()
+ 
+    def create_button(self):
+        self.button1 = tkinter.Button(self, text="view camera feed", command=self.click_start_video)
+        self.button1.pack()
+
+    def create_canvas(self):
+        windX, windY = 500,500
+        self.canvas = tkinter.Canvas(self.master, bg='black', width = windX, height = windY)
+        self.file = tkinter.PhotoImage(file = "car_model.png")
+        self.image = self.canvas.create_image(windX//2, windY//3, image=self.file)
+            
+        self.canvas.pack(expand=False)
+
+    def update_canvas(self):
+        windX, windY = 500,500
+        self.canvas.delete('all')
+        self.canvas = tkinter.Canvas(self.master, bg='black', width = windX, height = windY)
+        self.image = self.canvas.create_image(windX//2, windY//3, image=self.file)
+        self.canvas.update()
+
+    def create_radar(self, x1, y1, x2, y2):
+        angle = 60
+        self.arc = self.canvas.create_arc(x1, y1, x2, y2, start = 270-angle/2, extent = angle, outline = "green",\
+                          fill = "blue", width = 2)
         
-        Frame.__init__(self, master)
-        self.master=master      
+    def update_radar(self):
+        print(self.counter)
+        i = self.counter
+        self.create_radar(self.size[i][0], self.size[i][1], self.size[i][2], self.size[i][3])
+        #self.counter+=1
+        if self.counter == 2:
+            self.counter = 0
         
-        self.pack(fill=BOTH, expand=1)
-        menu = Menu(self.master)
-        self.master.config(menu=menu)
-
-        # Menu
-        fileMenu = Menu(menu)
-        #fileMenu.add_command(label="Item")
-        fileMenu.add_command(label="Exit", command=self.click_exit_button)
-        menu.add_cascade(label="Manu", menu=fileMenu)
-
-        # button
-        #exit_button = Button(self, text="Exit", command=self.click_exit_button)
-        #exit_button.place(x=0, y=0)
-
-        camera_button = Button(self, text="view camera feed", command=self.click_start_video)
-        #camera_button.place(x=0, y=0)
-        camera_button.pack()
-
-
-    def click_exit_button(self):
-        exit()
+    def updater(self):
+        #self.create_canvas()
+        #self.update_canvas()
+        self.update_radar()
+        self.after(UPDATE_RATE, self.updater)
+        
 
     def click_start_video(self):
-        start_video()
-
-if __name__ == '__main__':
-    size = [[100, 200, 400, 400],[100/2, 200/2, 400/2, 400/2]]
-    i = 0
-    while True:
-        if i == 2:
-            i = 0 
-        main(size[i][0], size[i][1], size[i][2], size[i][3])
-        i += 1
-        time.sleep(1)
+        return None
+        #start_video() TODO remove
+ 
+root = tkinter.Tk()
+root.wm_title("UI")
+root.geometry("500x500")
+app = Application(master=root)
+app.mainloop()
