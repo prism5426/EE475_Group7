@@ -1,5 +1,6 @@
 import time
 import tkinter
+from i2c_test import *
 #from camera_test import * TODO remove comment
 
 UPDATE_RATE = 100
@@ -18,6 +19,7 @@ class Application(tkinter.Frame):
         self.create_button()
         self.create_canvas()
         #self.create_canvas()
+        self.distance = []
         self.prev_arc = [0, 0, 0, 0]
         self.updater()
 
@@ -42,10 +44,6 @@ class Application(tkinter.Frame):
         self.image = self.canvas.create_image(windX//2, windY//3, image=self.file)
         self.canvas.update()
 
-    '''def create_radar(self, x1, y1, x2, y2):
-        angle = 60
-        self.arc = self.canvas.create_arc(x1, y1, x2, y2, start = 270-angle/2, extent = angle, outline = "green",\
-                          fill = "blue", width = 2)'''
 
     def create_radar(self, x1, y1, x2, y2):
         angle = 40
@@ -74,7 +72,7 @@ class Application(tkinter.Frame):
         # self.create_radar(self.size[i][0], self.size[i][1], self.size[i][2], self.size[i][3])
         # self.create_radar(100 - self.counter, 100, 300 + self.counter, 300 + self.counter)
         
-        x1, y1, x2, y2 = self.calc_coor(200, 320, 200+self.counter, 200+(self.counter))
+        x1, y1, x2, y2 = self.calc_coor(200, 320, self.distance[0], self.distance[0])
         #self.canvas.create_rectangle(x1, y1, x2, y2, outline = "red")
         self.create_radar(x1, y1, x2, y2)
         self.counter+=10
@@ -99,6 +97,9 @@ class Application(tkinter.Frame):
     def updater(self):
         #self.create_canvas()
         #self.update_canvas()
+        raw_data = read_data()
+        self.distance = cal_distance(raw_data)
+        print(self.distance)
         self.update_radar()
         self.after(UPDATE_RATE, self.updater)
         
@@ -106,6 +107,7 @@ class Application(tkinter.Frame):
     def click_start_video(self):
         return None
         #start_video() TODO remove
+
  
 root = tkinter.Tk()
 root.wm_title("UI")
