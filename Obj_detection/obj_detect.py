@@ -3,6 +3,11 @@ import tkinter
 from PIL import Image, ImageTk
 from i2c_test import * 
 from camera_test import * 
+import os
+import threading
+#from multiprocessing import Process
+import sys
+from functools import lru_cache
 
 UPDATE_RATE = 50
  
@@ -57,6 +62,7 @@ class Application(tkinter.Frame):
         angle = 40
         h_arr = self.dist_avg
         print(h_arr)
+        # print(sys.getsizeof(self.dist_avg), sys.getsizeof(self.dist_buffer))
         # use len(h_arr) for all sensors
         for i in range(self.num_sensor):
             cx, cy, direction = self.us_pos[i]
@@ -116,12 +122,18 @@ class Application(tkinter.Frame):
                 self.dist_avg[i] += (data[i] - prev) / self.FIFO_LEN
 
     def click_start_video(self):
-        return None
-        #start_video() TODO remove
+        #start_video()
+        threading.Thread(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1")).start()
+        #Process(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1")).start()
 
- 
-root = tkinter.Tk()
-root.wm_title("UI")
-root.geometry("500x550")
-app = Application(master=root)
-app.mainloop()
+def app():
+    root = tkinter.Tk()
+    root.wm_title("UI")
+    root.geometry("500x550")
+    app = Application(master=root)
+    app.mainloop()
+
+if __name__ == "__main__":
+    threading.Thread(target=app()).start()
+    #Process(target=app).start()
+
