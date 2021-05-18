@@ -47,7 +47,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-
+uint8_t cmd;
+uint8_t tx_buf[sizeof(int) * ULTRASONIC_NUM_SENSORS];
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -69,6 +70,9 @@ int __io_putchar(int ch) {
 static void ultrasonic_callback(int *pulse_widths) {
 	printf("Reached end of schedule.\n");
 	for (int i = 0; i < ULTRASONIC_NUM_SENSORS; i++) {
+		for (int index = 0; index < sizeof(int); index++) {
+			tx_buf[sizeof(int) * i + index] = (pulse_widths[i] >> (24 - 8 * index)) & 0xFF;
+		}
 		printf("  [%d]: %d\n", i, pulse_widths[i]);
 	}
 
@@ -104,7 +108,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
+
   /* USER CODE BEGIN 2 */
+  HAL_I2C_EnableListen_IT(&hi2c1);
 
     // Configure sensor polling order for ultrasonic task.
   	static const UltrasonicScheduleEntry ultrasonic_schedule[] = {
@@ -203,7 +209,7 @@ static void MX_I2C1_Init(void)
   hi2c1.Instance = I2C1;
   hi2c1.Init.ClockSpeed = 100000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.OwnAddress1 = 30;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c1.Init.OwnAddress2 = 0;
@@ -274,6 +280,28 @@ void __app_abort(const char *file, int line) {
 	while (1) {
 		// Infinite loop
 	}
+}
+
+void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef* hi2c) {
+	if (hi2c == &hi2c1) {
+		printf("i2c_RxCallback\n");
+		printf("cmd = %d\n", cmd);
+	}
+}
+
+void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c) {
+	HAL_I2C_EnableListen_IT(&hi2c1); // Restart
+}
+
+void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode)
+{
+	UNUSED(AddrMatchCode);
+
+	if(TransferDirection == I2C_DIRECTION_TRANSMIT)
+		HAL_I2C_Slave_Sequential_Receive_IT(&hi2c1, &cmd, 1, I2C_LAST_FRAME);
+	else
+		HAL_I2C_Slave_Sequential_Transmit_IT(&hi2c1, tx_buf, sizeof(int) * ULTRASONIC_NUM_SENSORS, I2C_LAST_FRAME);
+
 }
 /* USER CODE END 4 */
 
