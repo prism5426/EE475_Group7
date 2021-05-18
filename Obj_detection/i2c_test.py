@@ -31,5 +31,5 @@ def cal_distance(raw_data):
         if data != -1:
             distance.append(data/58)
         else:
-            distance.append('sensor disconnected')
+            distance.append(-1)
     return distance
