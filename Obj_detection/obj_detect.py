@@ -1,15 +1,13 @@
 import time
 import tkinter
 from PIL import Image, ImageTk
-#from i2c_test import * TODO remove
-#from camera_test import * TODO remove comment
+from i2c_test import * 
+from camera_test import * 
 
 UPDATE_RATE = 1000
  
 class Application(tkinter.Frame):
     """ GUI """
-
-    
     
     def __init__(self, master=None):
         """ Initialize the Frame"""
@@ -25,14 +23,11 @@ class Application(tkinter.Frame):
         self.pack()
         self.create_button()
         self.create_canvas()
-        #self.create_canvas()
-        #self.distance = []
         self.distance = [200 for i in range(4)]
         self.prev_arc = [[0 for i in range(4)] for j in range(4)]
         self.updater()
 
 
- 
     def create_button(self):
         self.button1 = tkinter.Button(self, text="view camera feed", command=self.click_start_video)
         self.button1.pack()
@@ -40,7 +35,6 @@ class Application(tkinter.Frame):
     def create_canvas(self):
         windX, windY = 500,500
         self.canvas = tkinter.Canvas(self.master, bg='black', width = windX, height = windY)
-        #self.file = tkinter.PhotoImage(file = "car_model.png")
         self.img = Image.open("car_model.png")
         self.img = self.img.resize((500, 340))
         self.img = ImageTk.PhotoImage(self.img)
@@ -59,7 +53,8 @@ class Application(tkinter.Frame):
     def create_radar(self, h_arr):
         angle = 40
 
-        for i in range(len(h_arr)):
+        # use len(h_arr) for all sensors
+        for i in range(4):
             cx, cy, direction = self.us_pos[i]
             x1, y1, x2, y2 = self.calc_coor(cx, cy, h_arr[i])
             
@@ -89,19 +84,6 @@ class Application(tkinter.Frame):
                                               outline="green",
                                               fill="blue", width=2)
 
-    def update_radar(self):
-        # cx1, cy1 = self.us_pos[0]
-        # x1, y1, x2, y2 = self.calc_coor(cx1, cy1, 200, 200)
-        # self.create_radar(x1, y1, x2, y2)
-        # self.create_radar(100 - self.counter, 100, 300 + self.counter, 300 + self.counter)
-        # self.canvas.create_rectangle(x1, y1, x2, y2, outline = "red")
-        # x1, y1, x2, y2 = self.calc_coor(200, 320, self.distance[0], self.distance[0])
-        '''
-        for cx, cy in self.us_pos:
-            print(cx, cy)
-            x1, y1, x2, y2 = self.calc_coor(cx, cy, 200, 200)
-            self.create_radar(x1, y1, x2, y2)
-        '''
         
     def calc_coor(self, cx, cy, h):
         if  h < 0:
@@ -116,10 +98,8 @@ class Application(tkinter.Frame):
         return x1, y1, x2, y2
 
     def updater(self):
-        #self.create_canvas()
-        #self.update_canvas()
-        #raw_data = read_data() TODO remove
-        #self.distance = cal_distance(raw_data) TODO remove
+        raw_data = read_data() 
+        self.distance = cal_distance(raw_data) 
         #print(self.distance)
         self.create_radar(self.distance)
         self.after(UPDATE_RATE, self.updater)
