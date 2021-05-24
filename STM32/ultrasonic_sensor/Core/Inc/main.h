@@ -58,7 +58,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-<<<<<<< HEAD
 #define Trig5_Pin GPIO_PIN_0
 #define Trig5_GPIO_Port GPIOA
 #define Trig6_Pin GPIO_PIN_1
@@ -87,8 +86,6 @@ void Error_Handler(void);
 #define Trig1_GPIO_Port GPIOB
 #define Trig2_Pin GPIO_PIN_5
 #define Trig2_GPIO_Port GPIOB
-=======
->>>>>>> parent of d87a182 (first version of sensor driver)
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
