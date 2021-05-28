@@ -122,9 +122,8 @@ class Application(tkinter.Frame):
                 self.dist_avg[i] += (data[i] - prev) / self.FIFO_LEN
 
     def click_start_video(self):
-        #start_video()
-        threading.Thread(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1")).start()
-        #Process(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1")).start()
+        t1 = threading.Thread(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1"), daemon=True)
+        t1.start()
 
 def app():
     root = tkinter.Tk()
@@ -135,5 +134,4 @@ def app():
 
 if __name__ == "__main__":
     threading.Thread(target=app()).start()
-    #Process(target=app).start()
 
