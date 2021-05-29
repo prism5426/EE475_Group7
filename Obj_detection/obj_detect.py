@@ -5,11 +5,11 @@ from i2c_test import *
 from camera_test import * 
 import os
 import threading
-#from multiprocessing import Process
 import sys
 from functools import lru_cache
 
 UPDATE_RATE = 50
+SENSORS = [0, 1, 4, 5]
  
 class Application(tkinter.Frame):
     """ GUI """
@@ -108,21 +108,23 @@ class Application(tkinter.Frame):
         return x1, y1, x2, y2
 
     def updater(self):
-        raw_data = read_data() 
+        raw_data = read_data()
+        # print(raw_data)
         #print(self.distance)
         self.update_dist_buffer(cal_distance(raw_data))
         self.create_radar()
         self.after(UPDATE_RATE, self.updater)
 
     def update_dist_buffer(self, data):
-        for i in range(self.num_sensor): 
-            if (data[i] != -1) :
+        for i in range(self.num_sensor):
+            j = SENSORS[i]
+            if (data[j] != -1):
                 prev = self.dist_buffer[i].pop()
-                self.dist_buffer[i].insert(0, data[i])
-                self.dist_avg[i] += (data[i] - prev) / self.FIFO_LEN
+                self.dist_buffer[i].insert(0, data[j])
+                self.dist_avg[i] += (data[j] - prev) / self.FIFO_LEN
 
     def click_start_video(self):
-        #start_video()
+        # start_video()
         threading.Thread(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1")).start()
         #Process(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1")).start()
 
@@ -135,5 +137,4 @@ def app():
 
 if __name__ == "__main__":
     threading.Thread(target=app()).start()
-    #Process(target=app).start()
 
