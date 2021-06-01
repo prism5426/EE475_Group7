@@ -10,7 +10,7 @@ def read_data():
     read = 0
     while read == 0:
         try:
-            print("reading data")
+            #print("reading data")
             block = bus.read_i2c_block_data(addr, 0, 28)
             bytes_of_values = bytes(block)
             data = unpack('>iiiiiii', bytes_of_values)
