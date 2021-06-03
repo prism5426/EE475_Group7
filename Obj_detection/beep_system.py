@@ -32,6 +32,7 @@ def Distance(): #get the distance between obstacle and car
 
 def beep(measureDist, real_world=True): #function that define beep frequency
     #measureDist = Distance()
+    print(f'Measure Distance for Beep: {measureDist}')
     if real_world:
         multiplier = 10
     else:
@@ -40,39 +41,38 @@ def beep(measureDist, real_world=True): #function that define beep frequency
     #for testing, we can use 50cm, 30cm, 20cm, and 10cm
     #when distance larger than 1m, no beeping:
     if measureDist > 100:
-        return -1
+        return 0
     #when distance larger than 0.5m, beep once a second
     elif measureDist <= 100*multiplier and measureDist >= 50*multiplier:
         return 1
     #when distance larger than 0.3m, beep twice a second
     elif measureDist < 50*multiplier and measureDist >= 30*multiplier:
-        return 0.5
+        return 2
     #when distance larger than 0.1m, beep 4 times a second
     elif measureDist < 30*multiplier and measureDist >= 10*multiplier:
-        return 0.25
+        return 4
     #otherwise, constant beeping
     else: 
-        return 0
+        return 8
 
-prev_period = -1
-def update_audio(pwm, period):
-    global prev_period
-    if prev_period != period:
-        prev_period = period
-        if period == -1:
+prev_freq = -1
+def update_audio(pwm, freq):
+    global prev_freq
+    if prev_freq != freq:
+        prev_freq = freq
+        print(f'New Frequency: {freq}')
+        if freq <= 0:
             pwm.ChangeDutyCycle(0)
-        elif period == 0:
-            pwm.ChangeDutyCycle(100)
         else:
             pwm.ChangeDutyCycle(50)
-            pwm.ChangeFrequency(1/period)
+            pwm.ChangeFrequency(freq)
 
 def audio_config():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(18, GPIO.OUT)
-    pwm = GPIO.PWM(18, 0.5)
+    pwm = GPIO.PWM(18, 2)
     #pwm.ChangeDutyCycle(50)
-    pwm.start(50)
+    pwm.start(0)
     return pwm
     
 def GPIO_cleanup():

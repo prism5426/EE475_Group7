@@ -142,8 +142,9 @@ class Application(tkinter.Frame):
         self.create_radar()
         self.update_feed()
 
-        min_dist_all_senesor = self.min_dist_non_zero(self.dist_avg)
-        beeping_freq = beep(min_dist_all_senesor, real_world=False)
+        # min_dist_all_sensor = self.min_dist_non_zero(self.dist_avg)
+        min_dist_all_sensor = min(self.dist_avg)
+        beeping_freq = beep(min_dist_all_sensor, real_world=False)
         update_audio(self.pwm, beeping_freq) # change to True if actually real-world
 
         self.after(UPDATE_RATE, self.updater)

@@ -17,13 +17,13 @@ def start_video():
 def cap_video():
     ret, frame = cap.read()
     cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    
     scale_percent = 80 # percent of original size
     width = int(cv2image.shape[1] * scale_percent / 100)
     height = int(cv2image.shape[0] * scale_percent / 100)
     dim = (width, height)
 
     cv2image = cv2.resize(cv2image, dim)
+    cv2image = cv2.flip(cv2image, -1)
     return cv2image
 
 
