@@ -198,7 +198,7 @@ def predict(interpreter, input_frame, update_prediction=False):
         input_data = (np.float32(input_data) - input_mean) / input_std
 
     imW, imH = width, height
-    print(frame.shape)
+    #print(frame.shape)
     if update_prediction:
         # Perform the actual detection by running the model with the image as input
         interpreter.set_tensor(input_details[0]['index'],input_data)

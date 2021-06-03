@@ -30,38 +30,56 @@ def Distance(): #get the distance between obstacle and car
     return distance
 
 
-def beep(): #function that define beep frequency
-    measureDist = Distance()
-    
+def beep(measureDist, real_world=True): #function that define beep frequency
+    #measureDist = Distance()
+    if real_world:
+        multiplier = 10
+    else:
+        multiplier = 1
     #the value below are 1m, 0.5m, 0.3m, and 0.1m for a real car
     #for testing, we can use 50cm, 30cm, 20cm, and 10cm
     #when distance larger than 1m, no beeping:
     if measureDist > 100:
         return -1
     #when distance larger than 0.5m, beep once a second
-    elif measureDist <= 100 and MeasureDist >= 50:
+    elif measureDist <= 100*multiplier and measureDist >= 50*multiplier:
         return 1
     #when distance larger than 0.3m, beep twice a second
-    elif measureDist < 50 and MeasureDist >= 30:
+    elif measureDist < 50*multiplier and measureDist >= 30*multiplier:
         return 0.5
     #when distance larger than 0.1m, beep 4 times a second
-    elif measureDist < 30 and MeasureDist >= 10:
+    elif measureDist < 30*multiplier and measureDist >= 10*multiplier:
         return 0.25
-    #otherwise, no beeping
+    #otherwise, constant beeping
     else: 
         return 0
 
+prev_period = -1
+def update_audio(pwm, period):
+    global prev_period
+    if prev_period != period:
+        prev_period = period
+        if period == -1:
+            pwm.ChangeDutyCycle(0)
+        elif period == 0:
+            pwm.ChangeDutyCycle(100)
+        else:
+            pwm.ChangeDutyCycle(50)
+            pwm.ChangeFrequency(1/period)
 
-
-def main():
+def audio_config():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(18, GPIO.OUT)
-    pwm = GPIO.PWM(18, 2000)
+    pwm = GPIO.PWM(18, 0.5)
     #pwm.ChangeDutyCycle(50)
-    pwm.start(0)
-    #while 1:
-    #    None
+    pwm.start(50)
+    return pwm
     
+def GPIO_cleanup():
+    GPIO.output(18, False)
+    GPIO.cleanup()
+
+    '''
     while True:
         for dc in range(10, 101, 1):
             pwm.ChangeDutyCycle(dc)
@@ -72,7 +90,7 @@ def main():
             pwm.ChangeDutyCycle(dc)
             time.sleep(0.01)
         time.sleep(1)
-    
+    '''
     '''
     try:
         #repeat until the system end

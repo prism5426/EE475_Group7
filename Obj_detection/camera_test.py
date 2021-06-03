@@ -26,7 +26,6 @@ def cap_video():
     cv2image = cv2.resize(cv2image, dim)
     return cv2image
 
-        
 
 #start_video()
 #c1 = PiCamera()

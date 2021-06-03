@@ -1,5 +1,6 @@
 import time
 import tkinter
+from tkinter import messagebox
 from PIL import Image, ImageTk
 from i2c_test import * 
 from camera_test import * 
@@ -8,6 +9,7 @@ import os
 import threading
 import sys
 from functools import lru_cache
+from beep_system import *
 
 UPDATE_RATE = 50
 SENSORS = [0, 1, 4, 5]
@@ -18,6 +20,9 @@ class Application(tkinter.Frame):
     def __init__(self, master=None):
         ''' Init ML predictor '''
         self.interpreter = app_args()
+
+        ''' Init audio system'''
+        self.pwm = audio_config()
 
         """ Initialize the Frame"""
         self.THRESHOLD = 400
@@ -32,6 +37,7 @@ class Application(tkinter.Frame):
         super().__init__(master)
         self.master = master
         self.pack()
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
         # self.create_button()
         self.create_canvas()
         self.create_camera()
@@ -40,6 +46,13 @@ class Application(tkinter.Frame):
         self.dist_avg = [0 for i in range(self.num_sensor)]
         self.arcs = [None for i in range(self.num_sensor)]
         self.updater()
+
+    def on_closing(self):
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            GPIO.setup(18, GPIO.OUT)
+            GPIO.output(18, False)
+            GPIO.cleanup()
+            self.master.destroy()
 
     def create_camera(self):
         windX, windY = 500,500
@@ -122,12 +135,17 @@ class Application(tkinter.Frame):
         return x1, y1, x2, y2
 
     def updater(self):
-        raw_data = read_data()
-        # print(raw_data)
+        dist_data = cal_distance(read_data())
+        # print(dist_data)
         # print(self.distance)
-        self.update_dist_buffer(cal_distance(raw_data))
+        self.update_dist_buffer(dist_data)
         self.create_radar()
         self.update_feed()
+
+        min_dist_all_senesor = self.min_dist_non_zero(self.dist_avg)
+        beeping_freq = beep(min_dist_all_senesor, real_world=False)
+        update_audio(self.pwm, beeping_freq) # change to True if actually real-world
+
         self.after(UPDATE_RATE, self.updater)
 
     def update_dist_buffer(self, data):
@@ -138,16 +156,30 @@ class Application(tkinter.Frame):
                 self.dist_buffer[i].insert(0, data[j])
                 self.dist_avg[i] += (data[j] - prev) / self.FIFO_LEN
 
+    # depricated
     def click_start_video(self):
         t1 = threading.Thread(target=os.system("python3 ml_test.py --modeldir coco_ssd_mobilenet_v1"), daemon=True)
         t1.start()
 
+    def min_dist_non_zero(self, list):
+        res = -1
+        for i in list:
+            if i > 0 and i > res:
+                res = i
+        return res
+
 def app():
-    root = tkinter.Tk()
-    root.wm_title("Parking Assistant")
-    root.geometry("1000x500")
-    app = Application(master=root)
-    app.mainloop()
+    try:
+        root = tkinter.Tk()
+        root.wm_title("Parking Assistant")
+        root.geometry("1000x500")        
+        app = Application(master=root)
+
+        app.mainloop()
+    except KeyboardInterrupt:
+        #GPIO.output(18, False)
+        #GPIO.cleanup()
+        print("terminating")
 
 if __name__ == "__main__":
     threading.Thread(target=app()).start()
