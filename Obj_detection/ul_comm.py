@@ -1,0 +1,1 @@
+# @param: 7 numberical values, pulse length in mm, -1 for bad read.
